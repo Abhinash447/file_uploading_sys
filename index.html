@@ -17,11 +17,47 @@
     <script>
         const btnUpload = document.getElementById("btnUpload");
         const divOutput = document.getElementById("divOutput");
-
         const f = document.getElementById("f");
 
         btnUpload.addEventListener("click", () => {
-            
+            if (f.files.length === 0) {
+                alert("Please select a file first!");
+                return;
+            }
+
+            const fileReader = new FileReader();
+            const theFile = f.files[0];
+
+            fileReader.onload = async (ev) => {
+                const CHUNK_SIZE = 5000;
+                const buffer = ev.target.result;
+                const chunkCount = Math.ceil(buffer.byteLength / CHUNK_SIZE);
+
+                console.log("Read successfully");
+                // Appending a random string to avoid duplicate file names
+                const safeName = theFile.name.replace(/[^\x00-\x7F]/g, "");
+                const fileName = Math.floor(Math.random() * 1000) + "_" + safeName;
+
+                for (let chunkId = 0; chunkId < chunkCount; chunkId++) {
+                    const chunk = buffer.slice(chunkId * CHUNK_SIZE, chunkId * CHUNK_SIZE + CHUNK_SIZE);
+
+                    // FIXED: "headers" must be lowercase, and chunk.byteLength must be used
+                    await fetch("http://localhost:3000/upload", {
+                        method: "POST",
+                        headers: {
+                            "content-type": "application/octet-stream",
+                            "file-name": fileName,
+                        },
+                        body: chunk,
+                    });
+
+                    divOutput.innerText = `Uploaded chunk ${chunkId + 1} of ${chunkCount}`;
+                }
+                divOutput.innerText = "Upload complete!";
+                console.log("Total bytes read:", buffer.byteLength);
+            }
+
+            fileReader.readAsArrayBuffer(theFile);
         });
     </script>
 </body>
